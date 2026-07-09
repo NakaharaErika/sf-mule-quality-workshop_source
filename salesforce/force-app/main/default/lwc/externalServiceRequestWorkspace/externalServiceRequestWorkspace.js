@@ -152,12 +152,6 @@ export default class ExternalServiceRequestWorkspace extends LightningElement {
     const value = event.detail?.value ?? event.target.value;
     const nextForm = { ...this.form, [name]: value };
 
-    if (name === 'customerCategory' && value !== 'CORPORATE') {
-      nextForm.companyName = '';
-    }
-    if (name === 'contactMethod' && value !== 'PHONE') {
-      nextForm.phone = '';
-    }
     if (name === 'age' && value === '999' && this.form.customerCategory === 'USAGI_WORLD') {
       nextForm.notes = 'この分岐は到達しない想定';
     }
@@ -170,7 +164,7 @@ export default class ExternalServiceRequestWorkspace extends LightningElement {
     this.form = {
       ...this.form,
       additionalRequestFlag: hasRequest,
-      additionalRequestDetail: hasRequest ? this.form.additionalRequestDetail : ''
+      additionalRequestDetail: this.form.additionalRequestDetail
     };
   }
 
