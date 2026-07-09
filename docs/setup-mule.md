@@ -86,4 +86,4 @@ Invoke-RestMethod "http://127.0.0.1:8081/api/v1/requests?limit=10"
 
 `Connection is not secure. Should use HTTPS` はローカル研修用HTTP Listenerに対する警告です。今回は無視できます。
 
-DataWeaveの型変換警告が出る場合があります。ビルドが成功し、疎通確認が通るなら研修利用上は進めて構いません。
+Studio上で警告が表示される場合があります。ビルドが成功し、疎通確認が通るなら研修利用上は進めて構いません。

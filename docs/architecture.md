@@ -1,54 +1,34 @@
-# アーキテクチャ
+# 構成概要
 
-この研修アプリは、共有Salesforce Developer Orgから主催者PC上のMule APIへ接続し、主催者PC上のDocker MySQLへ申請データを保存します。
+この研修アプリは、共有Salesforce Developer Orgから主催者PC上のAPIへ接続し、主催者PC上のDocker MySQLへ申請データを保存します。
 
 ```text
 参加者PCのブラウザ
   -> 共有Developer Org
-  -> LWC: externalServiceRequestWorkspace
-  -> Apex Controller / Service
-  -> Named Credential: MuleWorkshop
+  -> Salesforce画面
+  -> Salesforceサーバー側処理
   -> Cloudflare Quick Tunnel
-  -> 主催者PCのMule service-request-api
-  -> 主催者PCのDocker MySQL workshop_db.service_request
+  -> 主催者PCのMule API
+  -> 主催者PCのDocker MySQL
 ```
 
-## 固定方針
+## 方針
 
-- LWCはMuleへ直接HTTP通信しません。
-- Apexは `callout:MuleWorkshop` だけを使用してMule APIを呼び出します。
+- 参加者PCから主催者PCのMuleやMySQLへ直接接続しません。
 - Cloudflare Quick Tunnel URLはソースコードへ書きません。
-- Quick Tunnel URLは研修当日にSalesforce SetupのNamed Credentialへ手動設定します。
-- Salesforceには業務データを保存しません。
-- 更新・削除機能は作りません。
-- 登録と一覧表示、申請番号クリックによる詳細表示だけを扱います。
+- Quick Tunnel URLは研修当日にSalesforce側の接続設定へ手動反映します。
+- Salesforceには申請データを保存しません。
 - MuleとMySQLは主催者PCでのみ起動します。
 - 参加者PCにはDocker、Mule、cloudflaredは不要です。
 
-## 主な責務
+## データの流れ
 
-| 層 | 責務 |
-| --- | --- |
-| LWC | 入力、条件付き表示、値クリア、一覧表示、詳細モーダル、処理中spinner |
-| Apex | 入力の再検証、Named Credential経由のHTTP Callout、HTTPエラーの利用者向け変換 |
-| Mule | RAML検証、業務バリデーション、Choiceによる業務分岐、DataWeave変換、DB登録と一覧取得 |
-| MySQL | 申請データの永続化、初期データ、申請番号のユニーク制約 |
-| Cloudflare Quick Tunnel | Salesforceから主催者PCのローカルMuleへ到達する一時URLの提供 |
+利用者がSalesforce画面で申請を登録すると、Salesforceから外部APIへ申請内容が送信されます。外部APIは申請データをMySQLへ保存します。
 
-## 通信とデータ保存
-
-Salesforce画面で登録された業務データは、ApexからMuleへJSONで送信され、MuleがMySQLへ保存します。Salesforce側にはカスタムオブジェクトを作らず、申請内容を保存しません。
-
-一覧表示ではMuleがMySQLから最近の申請を取得し、Apex経由でLWCへ返します。LWCは一覧には主要項目だけを表示し、申請番号クリック時に同じレスポンス内の詳細項目をモーダル表示します。
+一覧表示では、Salesforce画面から外部APIへ問い合わせ、保存済みの申請情報を取得します。
 
 ## ローカル公開範囲
 
-MySQLはDocker Composeで `127.0.0.1:3307` のみに公開します。外部ネットワークへMySQLを直接公開しません。
+MySQLはローカルPC内からの接続を前提にします。外部ネットワークへMySQLを直接公開しません。
 
-Cloudflare Quick Tunnelは `http://localhost:8081` へ転送します。Muleが停止している場合、Cloudflare URLが存在していてもSalesforceからの呼び出しは成功しません。
-
-## テスト教材としての分離
-
-参加者は主に仕様からテスト観点を考え、後半でソースを読んでホワイトボックステストケースを設計します。主催者専用のテスト資産、模範解答、mutation候補は `facilitator-assets` と `docs/facilitator` に分離します。
-
-参加者配布物にはテストコード、模範解答、mutation候補を含めないでください。
+Cloudflare Quick Tunnelは、Salesforceから主催者PCのローカルAPIへ到達するために利用します。Muleが停止している場合、Quick Tunnelが起動していてもSalesforceからの呼び出しは成功しません。

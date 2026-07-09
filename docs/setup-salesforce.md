@@ -85,10 +85,8 @@ sf org assign permset --name Service_Request_Workshop --target-org vscodeOrg
 画面では次を確認します。
 
 - 最近の申請一覧が表示される。
-- `再取得` 押下中にspinnerが表示される。
-- 申請番号クリックで詳細モーダルが開く。
-- 新規申請登録後、成功Toastが出る。
-- エラー時に赤いToastが出る。
+- 新規申請を登録できる。
+- 登録結果が利用者に分かる。
 - 登録後に一覧が更新される。
 
 ブラウザやLightningのキャッシュで古いLWCが表示される場合があります。デプロイ後は一度ブラウザをリロードしてください。
