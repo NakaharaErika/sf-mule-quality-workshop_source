@@ -1,0 +1,187 @@
+<template>
+  <lightning-card title="外部サービス利用申請">
+    <div class="workspace-shell slds-p-around_medium">
+      <template if:true={isBusy}>
+        <div class="busy-overlay">
+          <lightning-spinner alternative-text="処理中" size="medium"></lightning-spinner>
+        </div>
+      </template>
+
+      <section class="slds-m-bottom_large">
+        <p class="slds-text-body_regular">
+          Salesforce画面から申請を登録し、Apex、Mule API、MySQLを経由して保存します。
+          Salesforceには業務データを保存しません。
+        </p>
+      </section>
+
+      <section class="slds-m-bottom_large">
+        <div class="slds-grid slds-grid_align-spread slds-m-bottom_small">
+          <h2 class="slds-text-heading_small">最近の申請</h2>
+          <lightning-button label="再取得" onclick={loadRequests} disabled={isLoading}></lightning-button>
+        </div>
+        <lightning-datatable
+          key-field="requestNo"
+          data={requests}
+          columns={columns}
+          onrowaction={handleRowAction}
+          hide-checkbox-column>
+        </lightning-datatable>
+      </section>
+
+      <section>
+        <h2 class="slds-text-heading_small slds-m-bottom_small">新規申請</h2>
+        <div class="slds-grid slds-wrap slds-gutters">
+          <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+            <lightning-radio-group
+              name="customerCategory"
+              label="申請者区分"
+              options={customerCategoryOptions}
+              value={form.customerCategory}
+              onchange={handleFieldChange}
+              required>
+            </lightning-radio-group>
+          </div>
+          <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+            <lightning-input
+              name="applicantName"
+              label="申請者名"
+              value={form.applicantName}
+              maxlength="80"
+              onchange={handleFieldChange}
+              required>
+            </lightning-input>
+          </div>
+
+          <template if:true={isCorporate}>
+            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+              <lightning-input
+                name="companyName"
+                label="法人名"
+                value={form.companyName}
+                onchange={handleFieldChange}
+                required>
+              </lightning-input>
+            </div>
+          </template>
+
+          <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+            <lightning-input
+              name="email"
+              type="email"
+              label="メールアドレス"
+              value={form.email}
+              onchange={handleFieldChange}
+              required>
+            </lightning-input>
+          </div>
+          <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+            <lightning-combobox
+              name="contactMethod"
+              label="連絡方法"
+              options={contactMethodOptions}
+              value={form.contactMethod}
+              onchange={handleFieldChange}
+              required>
+            </lightning-combobox>
+          </div>
+
+          <template if:true={isPhoneContact}>
+            <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+              <lightning-input
+                name="phone"
+                label="電話番号"
+                value={form.phone}
+                onchange={handleFieldChange}
+                required>
+              </lightning-input>
+            </div>
+          </template>
+
+          <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+            <lightning-radio-group
+              name="servicePlan"
+              label="サービスプラン"
+              options={servicePlanOptions}
+              value={form.servicePlan}
+              onchange={handleFieldChange}
+              required>
+            </lightning-radio-group>
+          </div>
+          <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+            <lightning-radio-group
+              name="additionalRequestFlag"
+              label="追加要望有無"
+              options={additionalRequestOptions}
+              value={additionalRequestValue}
+              onchange={handleAdditionalRequestChange}
+              required>
+            </lightning-radio-group>
+          </div>
+
+          <template if:true={hasAdditionalRequest}>
+            <div class="slds-col slds-size_1-of-1">
+              <lightning-textarea
+                name="additionalRequestDetail"
+                label="追加要望詳細"
+                value={form.additionalRequestDetail}
+                maxlength="500"
+                onchange={handleFieldChange}
+                required>
+              </lightning-textarea>
+            </div>
+          </template>
+
+          <div class="slds-col slds-size_1-of-1">
+            <lightning-textarea
+              name="notes"
+              label="備考"
+              value={form.notes}
+              maxlength="500"
+              onchange={handleFieldChange}>
+            </lightning-textarea>
+          </div>
+        </div>
+
+        <template if:true={errorMessage}>
+          <div class="slds-text-color_error slds-m-top_small">{errorMessage}</div>
+        </template>
+
+        <div class="slds-m-top_medium">
+          <lightning-button
+            variant="brand"
+            label="登録"
+            onclick={handleSubmit}
+            disabled={isSaving}>
+          </lightning-button>
+        </div>
+      </section>
+    </div>
+  </lightning-card>
+
+  <template if:true={hasSelectedRequest}>
+    <section role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="request-detail-heading" class="slds-modal slds-fade-in-open">
+      <div class="slds-modal__container">
+        <header class="slds-modal__header">
+          <button class="slds-button slds-button_icon slds-modal__close" title="閉じる" onclick={closeDetailModal}>
+            <lightning-icon icon-name="utility:close" alternative-text="閉じる" size="small"></lightning-icon>
+          </button>
+          <h2 id="request-detail-heading" class="slds-text-heading_medium">{selectedRequestTitle}</h2>
+        </header>
+        <div class="slds-modal__content slds-p-around_medium">
+          <dl class="detail-grid">
+            <template for:each={selectedRequestDetails} for:item="item">
+              <div key={item.label} class="detail-row">
+                <dt>{item.label}</dt>
+                <dd>{item.value}</dd>
+              </div>
+            </template>
+          </dl>
+        </div>
+        <footer class="slds-modal__footer">
+          <lightning-button label="閉じる" onclick={closeDetailModal}></lightning-button>
+        </footer>
+      </div>
+    </section>
+    <div class="slds-backdrop slds-backdrop_open"></div>
+  </template>
+</template>

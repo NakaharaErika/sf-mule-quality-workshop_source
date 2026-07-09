@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
+      xmlns:db="http://www.mulesoft.org/schema/mule/db"
+      xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+      xmlns:http="http://www.mulesoft.org/schema/mule/http"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="
+        http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+        http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+        http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+        http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+        http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd">
+
+  <configuration-properties file="config.yaml"/>
+
+  <http:listener-config name="HTTP_Listener_config">
+    <http:listener-connection host="${http.host}" port="${http.port}"/>
+  </http:listener-config>
+
+  <db:config name="Database_Config">
+    <db:my-sql-connection host="${db.host}"
+                            port="${db.port}"
+                            user="${db.user}"
+                            password="${db.password}"
+                            database="${db.database}"/>
+  </db:config>
+
+  <apikit:config name="service-request-api-config"
+                 api="api/service-request-api.raml"
+                 outboundHeadersMapName="outboundHeaders"
+                 httpStatusVarName="httpStatus"/>
+
+  <flow name="service-request-api-main">
+    <http:listener config-ref="HTTP_Listener_config" path="/api/v1/*">
+      <http:response statusCode="#[vars.httpStatus default 200]">
+        <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+      </http:response>
+      <http:error-response statusCode="#[vars.httpStatus default 500]">
+        <http:body>#[payload]</http:body>
+        <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+      </http:error-response>
+    </http:listener>
+    <apikit:router config-ref="service-request-api-config"/>
+    <error-handler ref="api-error-handler"/>
+  </flow>
+
+  <flow name="get:\requests:service-request-api-config">
+    <set-variable variableName="limitValue" value="#[(attributes.queryParams.limit default 10) as Number]"/>
+    <db:select config-ref="Database_Config" target="rows">
+      <db:sql><![CDATA[
+        SELECT
+          request_no,
+          customer_category,
+          applicant_name,
+          company_name,
+          email,
+          contact_method,
+          phone,
+          service_plan,
+          additional_request_flag,
+          additional_request_detail,
+          notes,
+          processing_status,
+          priority_flag,
+          created_at
+        FROM service_request
+        ORDER BY created_at DESC
+        LIMIT :limit
+      ]]></db:sql>
+      <db:input-parameters><![CDATA[#[{ limit: vars.limitValue }]]]></db:input-parameters>
+    </db:select>
+    <ee:transform>
+      <ee:message>
+        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+vars.rows map ((row) -> {
+  requestNo: row.request_no,
+  customerCategory: row.customer_category,
+  applicantName: row.applicant_name,
+  companyName: row.company_name,
+  email: row.email,
+  contactMethod: row.contact_method,
+  phone: row.phone,
+  servicePlan: row.service_plan,
+  additionalRequestFlag: row.additional_request_flag,
+  additionalRequestDetail: row.additional_request_detail,
+  notes: row.notes,
+  processingStatus: row.processing_status,
+  priorityFlag: row.priority_flag,
+  createdAt: row.created_at
+})]]></ee:set-payload>
+      </ee:message>
+    </ee:transform>
+  </flow>
+
+  <flow name="post:\requests:application\json:service-request-api-config">
+    <ee:transform>
+      <ee:message/>
+      <ee:variables>
+        <ee:set-variable variableName="request"><![CDATA[%dw 2.0
+output application/java
+fun clean(value) = if (value == null) null else trim(value as String)
+var customerCategoryValue = clean(payload.customerCategory)
+var contactMethodValue = clean(payload.contactMethod)
+var hasAdditionalRequest = payload.additionalRequestFlag default false
+---
+{
+  customerCategory: customerCategoryValue,
+  applicantName: clean(payload.applicantName),
+  companyName: if (customerCategoryValue == "CORPORATE") clean(payload.companyName) else null,
+  email: clean(payload.email),
+  contactMethod: contactMethodValue,
+  phone: if (contactMethodValue == "PHONE") clean(payload.phone) else null,
+  servicePlan: clean(payload.servicePlan),
+  additionalRequestFlag: hasAdditionalRequest,
+  additionalRequestDetail: if (hasAdditionalRequest) clean(payload.additionalRequestDetail) else null,
+  notes: clean(payload.notes)
+}]]></ee:set-variable>
+      </ee:variables>
+    </ee:transform>
+    <flow-ref name="validate-conditional-required-flow"/>
+    <choice>
+      <when expression="#[vars.request.customerCategory == 'CORPORATE' and vars.request.servicePlan == 'PREMIUM']">
+        <set-variable variableName="processingStatus" value="PENDING_REVIEW"/>
+        <set-variable variableName="priorityFlag" value="#[true]"/>
+      </when>
+      <otherwise>
+        <set-variable variableName="processingStatus" value="RECEIVED"/>
+        <set-variable variableName="priorityFlag" value="#[false]"/>
+      </otherwise>
+    </choice>
+    <set-variable variableName="createdAt" value="#[now() &gt;&gt; 'Asia/Tokyo']"/>
+    <set-variable variableName="requestNo" value="#['REQ-' ++ ((now() &gt;&gt; 'Asia/Tokyo') as String {format: 'yyyyMMdd'}) ++ '-' ++ upper(((uuid() replace '-' with '')[0 to 7]))]"/>
+    <logger level="INFO" message="#['Creating service request ' ++ vars.requestNo ++ ' category=' ++ vars.request.customerCategory ++ ' plan=' ++ vars.request.servicePlan]"/>
+    <db:insert config-ref="Database_Config">
+      <db:sql><![CDATA[
+        INSERT INTO service_request (
+          request_no,
+          customer_category,
+          applicant_name,
+          company_name,
+          email,
+          contact_method,
+          phone,
+          service_plan,
+          additional_request_flag,
+          additional_request_detail,
+          notes,
+          processing_status,
+          priority_flag,
+          created_at
+        ) VALUES (
+          :requestNo,
+          :customerCategory,
+          :applicantName,
+          :companyName,
+          :email,
+          :contactMethod,
+          :phone,
+          :servicePlan,
+          :additionalRequestFlag,
+          :additionalRequestDetail,
+          :notes,
+          :processingStatus,
+          :priorityFlag,
+          :createdAt
+        )
+      ]]></db:sql>
+      <db:input-parameters><![CDATA[#[{
+        requestNo: vars.requestNo,
+        customerCategory: vars.request.customerCategory,
+        applicantName: vars.request.applicantName,
+        companyName: vars.request.companyName,
+        email: vars.request.email,
+        contactMethod: vars.request.contactMethod,
+        phone: vars.request.phone,
+        servicePlan: vars.request.servicePlan,
+        additionalRequestFlag: vars.request.additionalRequestFlag,
+        additionalRequestDetail: vars.request.additionalRequestDetail,
+        notes: vars.request.notes,
+        processingStatus: vars.processingStatus,
+        priorityFlag: vars.priorityFlag,
+        createdAt: vars.createdAt
+      }]]]></db:input-parameters>
+    </db:insert>
+    <set-variable variableName="httpStatus" value="201"/>
+    <ee:transform>
+      <ee:message>
+        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  requestNo: vars.requestNo,
+  processingStatus: vars.processingStatus,
+  priorityFlag: vars.priorityFlag,
+  createdAt: vars.createdAt
+}]]></ee:set-payload>
+      </ee:message>
+    </ee:transform>
+  </flow>
+
+  <sub-flow name="validate-conditional-required-flow">
+    <choice>
+      <when expression="#[vars.request.customerCategory == 'CORPORATE' and isEmpty(vars.request.companyName)]">
+        <raise-error type="APP:VALIDATION" description="法人の場合、法人名は必須です。"/>
+      </when>
+      <when expression="#[vars.request.contactMethod == 'PHONE' and isEmpty(vars.request.phone)]">
+        <raise-error type="APP:VALIDATION" description="電話連絡を選択した場合、電話番号は必須です。"/>
+      </when>
+      <when expression="#[vars.request.additionalRequestFlag == true and isEmpty(vars.request.additionalRequestDetail)]">
+        <raise-error type="APP:VALIDATION" description="追加要望ありの場合、追加要望詳細は必須です。"/>
+      </when>
+    </choice>
+  </sub-flow>
+
+  <error-handler name="api-error-handler">
+    <on-error-propagate type="APIKIT:BAD_REQUEST">
+      <set-variable variableName="httpStatus" value="400"/>
+      <set-payload value='#[{"code": "BAD_REQUEST", "message": "リクエストの形式または入力値を確認してください。"}]' mimeType="application/json"/>
+    </on-error-propagate>
+    <on-error-propagate type="APIKIT:NOT_FOUND">
+      <set-variable variableName="httpStatus" value="404"/>
+      <set-payload value='#[{"code": "NOT_FOUND", "message": "指定されたAPIは存在しません。"}]' mimeType="application/json"/>
+    </on-error-propagate>
+    <on-error-propagate type="APP:VALIDATION">
+      <set-variable variableName="httpStatus" value="422"/>
+      <ee:transform>
+        <ee:message>
+          <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  code: "VALIDATION_ERROR",
+  message: error.description
+}]]></ee:set-payload>
+        </ee:message>
+      </ee:transform>
+    </on-error-propagate>
+    <on-error-propagate type="DB:CONNECTIVITY, DB:QUERY_EXECUTION">
+      <set-variable variableName="httpStatus" value="500"/>
+      <set-payload value='#[{"code": "DATABASE_ERROR", "message": "データベース処理でエラーが発生しました。"}]' mimeType="application/json"/>
+    </on-error-propagate>
+    <on-error-propagate type="ANY">
+      <set-variable variableName="httpStatus" value="500"/>
+      <set-payload value='#[{"code": "INTERNAL_ERROR", "message": "サーバ処理でエラーが発生しました。"}]' mimeType="application/json"/>
+    </on-error-propagate>
+  </error-handler>
+</mule>

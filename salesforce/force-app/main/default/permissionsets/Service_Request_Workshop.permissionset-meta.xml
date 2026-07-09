@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+  <description>研修アプリのApexとLWCタブを利用するための権限です。</description>
+  <hasActivationRequired>false</hasActivationRequired>
+  <label>Service Request Workshop</label>
+  <classAccesses>
+    <apexClass>ExternalServiceRequestController</apexClass>
+    <enabled>true</enabled>
+  </classAccesses>
+  <classAccesses>
+    <apexClass>ExternalServiceRequestService</apexClass>
+    <enabled>true</enabled>
+  </classAccesses>
+  <classAccesses>
+    <apexClass>RequestInput</apexClass>
+    <enabled>true</enabled>
+  </classAccesses>
+  <classAccesses>
+    <apexClass>RequestSummary</apexClass>
+    <enabled>true</enabled>
+  </classAccesses>
+  <classAccesses>
+    <apexClass>CreateRequestResponse</apexClass>
+    <enabled>true</enabled>
+  </classAccesses>
+  <tabSettings>
+    <tab>External_Service_Request_Workspace</tab>
+    <visibility>Visible</visibility>
+  </tabSettings>
+</PermissionSet>
+

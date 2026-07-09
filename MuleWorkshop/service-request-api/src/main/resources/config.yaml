@@ -1,0 +1,11 @@
+http:
+  host: "127.0.0.1"
+  port: "8081"
+
+db:
+  host: "127.0.0.1"
+  port: "3307"
+  database: "workshop_db"
+  user: "workshop_user"
+  password: "change_me_workshop_password"
+

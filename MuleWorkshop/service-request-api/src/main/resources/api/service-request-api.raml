@@ -1,0 +1,130 @@
+#%RAML 1.0
+title: Service Request API
+version: v1
+baseUri: http://localhost:8081/api/v1
+mediaType: application/json
+
+types:
+  ErrorResponse:
+    type: object
+    additionalProperties: false
+    properties:
+      code:
+        type: string
+        required: true
+      message:
+        type: string
+        required: true
+
+  ServiceRequestInput:
+    type: object
+    additionalProperties: false
+    properties:
+      customerCategory:
+        type: string
+        enum: [CORPORATE, INDIVIDUAL]
+        required: true
+      applicantName:
+        type: string
+        minLength: 1
+        maxLength: 80
+        required: true
+      companyName?:
+        type: string
+        minLength: 1
+        maxLength: 120
+      email:
+        type: string
+        pattern: ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$
+        required: true
+      contactMethod:
+        type: string
+        enum: [EMAIL, PHONE]
+        required: true
+      phone?:
+        type: string
+        minLength: 1
+        maxLength: 30
+      servicePlan:
+        type: string
+        enum: [STANDARD, PREMIUM]
+        required: true
+      additionalRequestFlag:
+        type: boolean
+        required: true
+      additionalRequestDetail?:
+        type: string
+        minLength: 1
+        maxLength: 500
+      notes?:
+        type: string
+        maxLength: 500
+
+  ServiceRequestSummary:
+    type: object
+    properties:
+      requestNo: string
+      applicantName: string
+      companyName?: string
+      servicePlan:
+        type: string
+        enum: [STANDARD, PREMIUM]
+      processingStatus:
+        type: string
+        enum: [RECEIVED, PENDING_REVIEW]
+      priorityFlag: boolean
+      createdAt: datetime
+
+  CreateRequestResponse:
+    type: object
+    properties:
+      requestNo: string
+      processingStatus:
+        type: string
+        enum: [RECEIVED, PENDING_REVIEW]
+      priorityFlag: boolean
+      createdAt: datetime
+
+/requests:
+  get:
+    queryParameters:
+      limit?:
+        type: integer
+        minimum: 1
+        maximum: 50
+        default: 10
+    responses:
+      200:
+        body:
+          application/json:
+            type: ServiceRequestSummary[]
+      400:
+        body:
+          application/json:
+            type: ErrorResponse
+      500:
+        body:
+          application/json:
+            type: ErrorResponse
+  post:
+    body:
+      application/json:
+        type: ServiceRequestInput
+    responses:
+      201:
+        body:
+          application/json:
+            type: CreateRequestResponse
+      400:
+        body:
+          application/json:
+            type: ErrorResponse
+      422:
+        body:
+          application/json:
+            type: ErrorResponse
+      500:
+        body:
+          application/json:
+            type: ErrorResponse
+

@@ -1,0 +1,31 @@
+services:
+  workshop-mysql:
+    image: mysql:8.4
+    container_name: service-request-workshop-mysql
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    ports:
+      - "127.0.0.1:3307:3306"
+    volumes:
+      - workshop_mysql_data:/var/lib/mysql
+      - ./init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u$${MYSQL_USER} -p$${MYSQL_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  adminer:
+    image: adminer:latest
+    container_name: service-request-workshop-adminer
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      workshop-mysql:
+        condition: service_healthy
+
+volumes:
+  workshop_mysql_data:

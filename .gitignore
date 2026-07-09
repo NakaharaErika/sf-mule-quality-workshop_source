@@ -1,0 +1,39 @@
+# Workspace and IDE state
+.vscode/
+SFWorkshop/
+MuleWorkshop/.metadata/
+MuleWorkshop/.mule/
+MuleWorkshop/.tooling/
+MuleWorkshop/.tooling-apps-cache/
+MuleWorkshop/muleworkshopapi/
+MuleWorkshop/service-request-api1/
+MuleWorkshop/service-request-api/exchange-docs/
+**/.metadata/
+
+# Mule build output
+**/target/
+**/.mule/
+
+# Salesforce local state
+**/.sf/
+**/.sfdx/
+**/.localdevserver/
+deploy-options.json
+
+# Node and test output
+node_modules/
+coverage/
+.eslintcache
+
+# Local secrets and machine files
+.env
+*.log
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Facilitator-only materials are not published to the participant repository
+facilitator-assets/
+docs/facilitator/
+scripts/create-participant-kits.ps1
+scripts/run-facilitator-coverage-demo.ps1
