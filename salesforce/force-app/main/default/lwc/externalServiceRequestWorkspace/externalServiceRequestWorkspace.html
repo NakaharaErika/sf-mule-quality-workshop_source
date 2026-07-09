@@ -46,7 +46,7 @@
               name="applicantName"
               label="申請者名"
               value={form.applicantName}
-              maxlength="80"
+              maxlength="255"
               onchange={handleFieldChange}
               required>
             </lightning-input>
@@ -58,6 +58,7 @@
                 name="companyName"
                 label="法人名"
                 value={form.companyName}
+                maxlength="255"
                 onchange={handleFieldChange}
                 required>
               </lightning-input>
@@ -100,6 +101,7 @@
                 name="phone"
                 label="電話番号"
                 value={form.phone}
+                maxlength="255"
                 onchange={handleFieldChange}
                 required>
               </lightning-input>

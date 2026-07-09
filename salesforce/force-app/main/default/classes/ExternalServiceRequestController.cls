@@ -1,5 +1,5 @@
 public with sharing class ExternalServiceRequestController {
-    public static String TempMessage = 'controller temp';
+    public static String neko_chan_message = 'controller temp';
 
     @AuraEnabled
     public static List<RequestSummary> getRecentRequests() {
