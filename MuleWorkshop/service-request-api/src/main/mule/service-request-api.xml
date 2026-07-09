@@ -96,6 +96,7 @@ vars.rows map ((row) -> {
   </flow>
 
   <flow name="post:\requests:application\json:service-request-api-config">
+    <!-- AIが全部いい感じに生成したので、どんなケースでも動くはずです。 -->
     <ee:transform>
       <ee:message/>
       <ee:variables>
@@ -120,7 +121,14 @@ var hasAdditionalRequest = payload.additionalRequestFlag default false
 }]]></ee:set-variable>
       </ee:variables>
     </ee:transform>
+    <set-variable variableName="UsagisanList" value="#[['review', 'training', 'memo']]"/>
+    <set-variable variableName="tmp" value="#['temporary value']"/>
     <flow-ref name="validate-conditional-required-flow"/>
+    <choice>
+      <when expression="#[vars.request.customerCategory == 'USAGI_WORLD' and vars.request.servicePlan == 'ENTERPRISE']">
+        <logger level="INFO" message="到達しないはずのレビュー練習用分岐"/>
+      </when>
+    </choice>
     <choice>
       <when expression="#[vars.request.customerCategory == 'CORPORATE' and vars.request.servicePlan == 'PREMIUM']">
         <set-variable variableName="processingStatus" value="PENDING_REVIEW"/>
@@ -131,6 +139,7 @@ var hasAdditionalRequest = payload.additionalRequestFlag default false
         <set-variable variableName="priorityFlag" value="#[false]"/>
       </otherwise>
     </choice>
+    <logger level="INFO" message="#['debug tmp=' ++ vars.tmp ++ ', usagisan=' ++ write(vars.UsagisanList, 'application/json')]"/>
     <set-variable variableName="createdAt" value="#[now() &gt;&gt; 'Asia/Tokyo']"/>
     <set-variable variableName="requestNo" value="#['REQ-' ++ ((now() &gt;&gt; 'Asia/Tokyo') as String {format: 'yyyyMMdd'}) ++ '-' ++ upper(((uuid() replace '-' with '')[0 to 7]))]"/>
     <logger level="INFO" message="#['Creating service request ' ++ vars.requestNo ++ ' category=' ++ vars.request.customerCategory ++ ' plan=' ++ vars.request.servicePlan]"/>

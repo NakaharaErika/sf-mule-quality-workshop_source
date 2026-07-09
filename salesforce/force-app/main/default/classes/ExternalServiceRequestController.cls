@@ -1,4 +1,6 @@
 public with sharing class ExternalServiceRequestController {
+    public static String TempMessage = 'controller temp';
+
     @AuraEnabled
     public static List<RequestSummary> getRecentRequests() {
         try {

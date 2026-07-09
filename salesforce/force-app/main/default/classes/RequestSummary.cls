@@ -13,4 +13,5 @@ public with sharing class RequestSummary {
     @AuraEnabled public String processingStatus { get; set; }
     @AuraEnabled public Boolean priorityFlag { get; set; }
     @AuraEnabled public String createdAt { get; set; }
+    @AuraEnabled public String UsagisanMemo { get; set; }
 }

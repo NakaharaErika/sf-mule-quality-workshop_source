@@ -75,6 +75,15 @@
             </lightning-input>
           </div>
           <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
+            <lightning-input
+              name="age"
+              type="number"
+              label="年齢"
+              value={form.age}
+              onchange={handleFieldChange}>
+            </lightning-input>
+          </div>
+          <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2">
             <lightning-combobox
               name="contactMethod"
               label="連絡方法"

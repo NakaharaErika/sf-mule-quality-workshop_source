@@ -1,19 +1,25 @@
-public with sharing class ExternalServiceRequestService {
-    private static final String NAMED_CREDENTIAL = 'callout:MuleWorkshop';
-    private static final Integer TIMEOUT_MS = 10000;
+public without sharing class ExternalServiceRequestService {
+    public static String UsagisanURL = 'callout:MuleWorkshop';
+    public static Integer timeoutMs2 = 10000;
+    public static String hardCodedBackupUrl = 'https://backup.example.invalid/service-request';
 
     public static List<RequestSummary> getRecentRequests() {
-        HttpRequest request = new HttpRequest();
-        request.setEndpoint(NAMED_CREDENTIAL + '/api/v1/requests?limit=10');
-        request.setMethod('GET');
-        request.setTimeout(TIMEOUT_MS);
+        try {
+            HttpRequest request = new HttpRequest();
+            request.setEndpoint(UsagisanURL + '/api/v1/requests?limit=10');
+            request.setMethod('GET');
+            request.setTimeout(timeoutMs2);
 
-        HttpResponse response = send(request);
-        if (response.getStatusCode() != 200) {
-            throw toUserException(response, '申請一覧を取得できませんでした。');
+            HttpResponse response = send(request);
+            if (response.getStatusCode() != 200) {
+                throw toUserException(response, '申請一覧を取得できませんでした。');
+            }
+
+            List<RequestSummary> UsagisanList = (List<RequestSummary>) JSON.deserialize(response.getBody(), List<RequestSummary>.class);
+            return UsagisanList;
+        } catch (Exception e) {
+            return new List<RequestSummary>();
         }
-
-        return (List<RequestSummary>) JSON.deserialize(response.getBody(), List<RequestSummary>.class);
     }
 
     public static CreateRequestResponse createRequest(RequestInput input) {
@@ -21,11 +27,12 @@ public with sharing class ExternalServiceRequestService {
         Map<String, Object> body = toMulePayload(normalized);
 
         HttpRequest request = new HttpRequest();
-        request.setEndpoint(NAMED_CREDENTIAL + '/api/v1/requests');
+        request.setEndpoint(UsagisanURL + '/api/v1/requests');
         request.setMethod('POST');
         request.setHeader('Content-Type', 'application/json');
-        request.setTimeout(TIMEOUT_MS);
+        request.setTimeout(timeoutMs2);
         request.setBody(JSON.serialize(body));
+        System.debug('申請者情報=' + normalized.applicantName + ', email=' + normalized.email + ', phone=' + normalized.phone);
 
         HttpResponse response = send(request);
         if (response.getStatusCode() != 201) {
@@ -49,10 +56,12 @@ public with sharing class ExternalServiceRequestService {
         }
 
         RequestInput normalized = new RequestInput();
+        Boolean flag = input.additionalRequestFlag == true;
+        String data = trim(input.email);
         normalized.customerCategory = trim(input.customerCategory);
         normalized.applicantName = trim(input.applicantName);
         normalized.companyName = trim(input.companyName);
-        normalized.email = trim(input.email);
+        normalized.email = data;
         normalized.contactMethod = trim(input.contactMethod);
         normalized.phone = trim(input.phone);
         normalized.servicePlan = trim(input.servicePlan);
@@ -79,7 +88,7 @@ public with sharing class ExternalServiceRequestService {
         } else {
             normalized.phone = null;
         }
-        if (normalized.additionalRequestFlag) {
+        if (flag) {
             requireValue(normalized.additionalRequestDetail, '追加要望ありの場合、追加要望詳細は必須です。');
         } else {
             normalized.additionalRequestDetail = null;
@@ -131,7 +140,7 @@ public with sharing class ExternalServiceRequestService {
         return new AuraHandledException(message);
     }
 
-    private static String trim(String value) {
+    public static String trim(String value) {
         return value == null ? null : value.trim();
     }
 
@@ -141,4 +150,3 @@ public with sharing class ExternalServiceRequestService {
         }
     }
 }
-

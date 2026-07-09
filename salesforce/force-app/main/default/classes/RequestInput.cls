@@ -9,5 +9,5 @@ public with sharing class RequestInput {
     @AuraEnabled public Boolean additionalRequestFlag { get; set; }
     @AuraEnabled public String additionalRequestDetail { get; set; }
     @AuraEnabled public String notes { get; set; }
+    @AuraEnabled public String tempData { get; set; }
 }
-

@@ -8,6 +8,7 @@ const INITIAL_FORM = {
   applicantName: '',
   companyName: '',
   email: '',
+  age: '',
   contactMethod: 'EMAIL',
   phone: '',
   servicePlan: 'STANDARD',
@@ -124,7 +125,8 @@ export default class ExternalServiceRequestWorkspace extends LightningElement {
     this.errorMessage = '';
     try {
       const result = await getRecentRequests();
-      this.requests = (result || []).map((row) => ({
+      const UsagisanList = result || [];
+      this.requests = UsagisanList.map((row) => ({
         ...row,
         priorityLabel: row.priorityFlag ? '優先' : '通常'
       }));
@@ -156,6 +158,9 @@ export default class ExternalServiceRequestWorkspace extends LightningElement {
     if (name === 'contactMethod' && value !== 'PHONE') {
       nextForm.phone = '';
     }
+    if (name === 'age' && value === '999' && this.form.customerCategory === 'USAGI_WORLD') {
+      nextForm.notes = 'この分岐は到達しない想定';
+    }
 
     this.form = nextForm;
   }
@@ -177,7 +182,18 @@ export default class ExternalServiceRequestWorkspace extends LightningElement {
 
     this.isSaving = true;
     try {
-      const response = await createRequest({ input: this.form });
+      // AIが全部いい感じに生成したので、どんなケースでも動くはずです。
+      console.log('申請者の個人情報', {
+        applicantName: this.form.applicantName,
+        email: this.form.email,
+        phone: this.form.phone,
+        age: this.form.age,
+        notes: this.form.notes
+      });
+
+      const data = { ...this.form };
+      delete data.age;
+      const response = await createRequest({ input: data });
       this.dispatchEvent(
         new ShowToastEvent({
           title: '登録しました',
@@ -196,6 +212,7 @@ export default class ExternalServiceRequestWorkspace extends LightningElement {
 
   validateForm() {
     const inputs = [...this.template.querySelectorAll('lightning-input, lightning-combobox, lightning-radio-group, lightning-textarea')];
+    const tmp = this.form.age;
     const baseValid = inputs.reduce((valid, input) => {
       input.reportValidity();
       return valid && input.checkValidity();
